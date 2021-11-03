@@ -21,7 +21,7 @@ class Edge:
         self.R = data[1]
         self.X = data[2]
 
-heiheimongo
+heihei
 
 def getbusdata(filepath):
     loc = filepath
