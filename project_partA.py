@@ -54,4 +54,3 @@ if __name__ == '__main__':
     buses = getbuses("/Users/emiljakobsen/Documents/NTNU 4.klasse/7. semester/Power System Analysis/Project/project_busdata.xlsx")
     print(busmatrix)
     
-    print("nissefarihusethhahahahahahha")
