@@ -53,9 +53,3 @@ if __name__ == '__main__':
     busmatrix = getbusdata("/Users/emiljakobsen/Documents/NTNU 4.klasse/7. semester/Power System Analysis/Project/project_busdata.xlsx")
     buses = getbuses("/Users/emiljakobsen/Documents/NTNU 4.klasse/7. semester/Power System Analysis/Project/project_busdata.xlsx")
     print(busmatrix)
-<<<<<<< HEAD
-    print("hei")
-    print("hei igjen")
-=======
-    print("hei")
->>>>>>> readme-edits
