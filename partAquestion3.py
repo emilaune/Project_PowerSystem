@@ -15,7 +15,7 @@ import numpy as np      # np.sin, np.cos
 import cmath            # cmath.polar
 import math             # math.nan
 
-def partAquestion2():
+def partAquestion3():
 
     #           [i,     j,  r_ij,   x_ij,   y(OC)_ij]
     linedata = [[1,     2,  0.05,   0.25,   0.5],
@@ -32,7 +32,8 @@ def partAquestion2():
                [ 4,    2,      -0.5,       -0.4,   1.0,     0,  math.nan,   math.nan,   math.nan,  math.nan,    math.nan]]
 
 
-    YBus = findYBus(linedata)
+    YBus0 = findYBus(linedata)
+    YBus = addTransformer(YBus0)
     myangles = [0, 0, 0, 0, 0]              # all unknown bus voltage phase angles are initially set to 0 rad
     myVs = [1, 1, 1, 1, 1]                  # all unknown bus voltage magnitudes are initially set to 1.0 pu
 
@@ -77,6 +78,7 @@ def printJacobian(J):
             print(line,end = "")
         print(' ')
 
+
 def checkReactiveLimits(busdata,Q):
     dim = len(busdata)
     for i in range(0,dim):
@@ -86,6 +88,7 @@ def checkReactiveLimits(busdata,Q):
                 print("Upper Reactive Power Limit on bus:",busdata[i][0]+1," is violated!!!")
             elif(Q[i]<busdata[i][8]):
                 print("Lower Reactive Power Limit on bus:",busdata[i][0]+1," is violated!!!")
+
 
 def powerTransmissions(linedata,busdata,YBus):
 
@@ -240,6 +243,49 @@ def findYBus(linedata):
     return YBus
 
 
+def addTransformer(YBus):
+    z_t1 = complex(0,0.2)
+    z_t2 = complex(0,0.1)
+
+    y_t1 = 1/z_t1
+    y_t2 = 1/z_t2
+
+    a_t1 = 1.00
+    a_t2 = 0.98
+
+    theta_t1 = (4/360)*2*3.14
+
+    # new data on YBus
+
+    # Y_11 + y_pq                       # Y_44 + (-y_pq)
+    # Y_14 + (-y_pq/(as+jbs)            # Y_45 + (-y_pq/a)
+    # Y_41 + (-y_pq/(as-jbs)            # Y_55 + y_pq/a**2
+    # Y_44 + y_pq/(as**2+bs**2)         # Y_54 + (-y_pq/a)
+
+    Y_11t1 = y_t1
+    Y_14t1 = -y_t1/complex(a_t1*np.cos(theta_t1),a_t1*np.sin(theta_t1))
+    Y_41t1 = -y_t1/complex(a_t1*np.cos(theta_t1),-a_t1*np.sin(theta_t1))
+    Y_44t1 = y_t1/((a_t1*np.cos(theta_t1))**2+(a_t1*np.sin(theta_t1))**2)
+
+    Y_44t2 = y_t2
+    Y_45t2 = -y_t2/a_t2
+    Y_54t2 = -y_t2/a_t2
+    Y_55t2 = y_t2/a_t2**2
+
+    YBus[0][0] = YBus[0][0] + Y_14t1
+    YBus[0][3] = YBus[0][3] + Y_11t1
+    YBus[3][0] = YBus[3][0] + Y_41t1
+    YBus[3][3] = YBus[3][3] + Y_44t1
+
+    YBus[3][3] = YBus[3][3] + Y_44t2
+    YBus[3][4] = YBus[3][4] + Y_45t2
+    YBus[4][3] = YBus[4][3] + Y_54t2
+    YBus[4][4] = YBus[4][4] + Y_44t2
+
+    return YBus
+
+
+
 
 
 # findJacobian is the longest and most complex function used in the main program.
@@ -375,4 +421,4 @@ def updateStateVariables(inverse,myangles,myVs,pMismatch,qMismatch,busdata,nGen,
     return myangles, myVs,busdata
 
 
-partAquestion2()
+partAquestion3()
