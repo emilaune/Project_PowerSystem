@@ -15,22 +15,22 @@ class Bus:
         self.P_lim = data[6]
         self.Q_lim = data[7]
 
-class Line:
-    def __init__(self, linedata):
-        self.num = linedata[0]
-        self.R = linedata[1]
-        self.X = linedata[2]
+class Edge:
+    def __init__(self, data):
+        self.num = data[0]
+        self.R = data[1]
+        self.X = data[2]
         self.y = 1/(self.R+1j*self.X)
 
 
 def getbusdata(filepath):
     loc = filepath
     op = xlrd.open_workbook(loc)
-    a = op.sheet_by_index(0)
+    a = op.sheet_by_index(1)
     busmatrix = [[], [], [], [], []]  # hard?
     for i in range(5):
-        busdata = [0, '', 0, 0, 0, 0, 0, 0]  # had to define this in every loop, unless - hard?
-        for l in range(8):  # the busmatrix values is updated as busdata gets updated and contains only values from bus5
+        busdata = [ '', 0, 0, 0, 0, 0, 0]  # had to define this in every loop, unless - hard?
+        for l in range(7):  # the busmatrix values is updated as busdata gets updated and contains only values from bus5
             busdata[l] = a.cell_value(i+1, l)
         busmatrix[i] = busdata
     return busmatrix
@@ -46,15 +46,16 @@ def getbuses(filepath):  # takes the filepath as input parameter and uses getbus
     bus5 = Bus(busmatrix[4])
     buses = [bus1, bus2, bus3, bus4, bus5]
     return buses  # returns a list with all 5 buses
+"""
 
 def getlinedata(filepath):
     loc = filepath
     op = xlrd.open_workbook(loc)
     a = op.sheet_by_index(0)
-    linematrix = [[], [], [], [], []]
+    linematrix = [[], [], []]
     for i in range (5):
-        linedata = [0,0,0,0]
-        for l in range(4):
+        linedata = [0,0,0]
+        for l in range(3):
             linedata[l] = a.cell_value(i+1,l)
         linematrix[i] = linedata
     return linematrix
@@ -69,11 +70,12 @@ def getlines(filepath):
     buses = [bus1, bus2, bus3, bus4, bus5]
     return buses 
 
+"""
 
 if __name__ == '__main__':
     busmatrix = getbusdata("C:/Users/jonas/Downloads/project_busdata1.xlsx")
-    linematrix = getlinedata("C:/Users/jonas/Downloads/project_busdata2.xlsx")
+    #linematrix = getlinedata("C:/Users/jonas/Downloads/project_busdata1.xlsx")
     buses = getbuses("C:/Users/jonas/Downloads/project_busdata1.xlsx")
-    #print(busmatrix[0])
-    print(linematrix)
+    print(busmatrix)
+    #print(linematrix)
    

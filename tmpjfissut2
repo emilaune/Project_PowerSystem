@@ -53,7 +53,7 @@ def getlinedata(filepath):
     a = op.sheet_by_index(0)
     linematrix = [[], [], [], [], []]
     for i in range (5):
-        linedata = [0,0,0,0]
+        linedata = ['',0,0,0]
         for l in range(4):
             linedata[l] = a.cell_value(i+1,l)
         linematrix[i] = linedata
