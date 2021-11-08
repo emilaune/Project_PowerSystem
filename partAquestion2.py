@@ -2,33 +2,30 @@
 # TET4115 Power System Analysis; semester: Fall 2021
 # Author: Eivind Falk
 
-import numpy as np
-import cmath
-import math
+import numpy as np      # np.sin, np.cos
+import cmath            # cmath.polar
+import math             # math.nan
 
 def partAquestion2():
 
-    #[i, j, r_ij, x_ij, y(OC)_ij]
+    #           [i,     j,  r_ij,   x_ij,   y(OC)_ij]
     linedata = [[1,     2,  0.05,   0.25,   0.5],
                 [2,     3,  0.05,   0.25,   0.05],
                 [1,     4,  0.02,   0.2,    0.033],
                 [2,     4,  0.02,   0.2,    0.033],
                 [4,     5,  0.01,   0.1,    0.02]]
 
-
-              #NOTE! Bus 3 (problem description) is indexed "0", and Bus 1 is indexed "2"
-              #[bus no, bus type, P, Q, |V|, delta, P_min, P_max, Q_min, Q_max, x_shunt]
-
-    busdata = [[0,  1,      1.0,    math.nan,   1.0,    0,  math.nan,   math.nan,   math.nan,       0.5,    math.nan],
-               [1,  2,      -0.6,       -0.3,   1.0,    0,  math.nan,   math.nan,   math.nan,   math.nan,   math.nan],
-               [2,  0,  math.nan,   math.nan,   1.0,    0,  math.nan,       2.0,    math.nan,       1.5,    math.nan],
-               [3,  2,      -0.6,       -0.2,   1.0,    0,  math.nan,   math.nan,   math.nan,   math.nan,       -1.0],
-               [4,  2,      -0.5,       -0.4,   1.0,    0,  math.nan,   math.nan,   math.nan,   math.nan,   math.nan]]
+    #          [no, type,         P,          Q,   |V|, delta,     P_min,      P_max,      Q_min,     Q_max,     x_shunt]
+    busdata = [[ 0,    1,       1.0,   math.nan,   1.0,     0,  math.nan,   math.nan,   math.nan,       0.5,    math.nan],
+               [ 1,    2,      -0.6,       -0.3,   1.0,     0,  math.nan,   math.nan,   math.nan,  math.nan,    math.nan],
+               [ 2,    0,  math.nan,   math.nan,   1.0,     0,  math.nan,       2.0,    math.nan,       1.5,    math.nan],
+               [ 3,    2,      -0.6,       -0.2,   1.0,     0,  math.nan,   math.nan,   math.nan,  math.nan,        -1.0],
+               [ 4,    2,      -0.5,       -0.4,   1.0,     0,  math.nan,   math.nan,   math.nan,  math.nan,    math.nan]]
 
 
     YBus = findYBus(linedata)
-    myangles = [0, 0, 0, 0, 0]            # all unknown bus voltage phase angles are initially set to 0 rad
-    myVs = [1, 1, 1, 1, 1]               # all unknown bus voltage magnitudes are initially set to 1.0 pu
+    myangles = [0, 0, 0, 0, 0]              # all unknown bus voltage phase angles are initially set to 0 rad
+    myVs = [1, 1, 1, 1, 1]                  # all unknown bus voltage magnitudes are initially set to 1.0 pu
 
     iteration = 0
     print("iteration:",iteration)
@@ -36,19 +33,19 @@ def partAquestion2():
     [pMismatch, qMismatch, nGen, nLoad, b,P,Q] = isConverged(myangles, myVs, YBus, busdata)
     printIteration(busdata, pMismatch, qMismatch, P, Q)
 
-    while(b == False):
+    while(b == False):                  # while not converged
         iteration += 1
         print("Iteration: ",iteration)
 
-        # no? Perform an iteration
+        # Find new Jacobian
         J = findJacobian(YBus, busdata,nGen,nLoad)
         printJacobian(J)
         inverse = np.linalg.inv(J)
 
-        #update the state variables
+        # Update the state variables
         [myangles,myVs,busdata] = updateStateVariables(inverse,myangles,myVs,pMismatch,qMismatch,busdata,nGen,nLoad)
 
-        # is converged?
+        # Check convergence
         [pMismatch, qMismatch, nGen, nLoad, b, P, Q] = isConverged(myangles, myVs, YBus, busdata)
 
         # display the iteration results
@@ -58,16 +55,18 @@ def partAquestion2():
 
 def printJacobian(J):
     dim = len(J)
-    gaplength = 2
+    gaplength = 5
     gap = ' '*gaplength
-    header_1 = 'JACOBIAN'
-    space = int(((dim)*(10+2))/2-len(header_1)/2)
-    print("_"*int((space-gaplength/2)),header_1,"_"*(int(space-gaplength/2)))
+    header = 'JACOBIAN'
+    space = int((dim)*(14/2)-len(header)/2)
+    print("_"*int((space)),header,"_"*(int(space)))
     for i in range(0,dim):
         for j in range(0,dim):
             line = f"{J[i][j]:10f}{gap}"
             print(line,end = "")
         print(' ')
+
+
 
 def powerTransmissions(linedata,busdata,YBus):
 
@@ -80,29 +79,21 @@ def powerTransmissions(linedata,busdata,YBus):
     print(header)
     print("-"*150)
     for i in range(0,len(linedata)):
-        #print(linedata[i][0],"linedata[i][0]")
-        a = 5+6j
-        b = 4+9j
         [A,angle] = cmath.polar(YBus[linedata[i][0]-1][linedata[i][1]-1])
 
         # transmitted power
-        angles = complex(np.cos(busdata[linedata[i][0]-1][5]-(-busdata[linedata[i][1]-1][5])),np.sin(busdata[linedata[i][0]-1][5]-(-busdata[linedata[i][1]-1][5])))
-        inside = (busdata[linedata[i][0]-1][4]**2)-busdata[linedata[i][0]-1][4]*busdata[linedata[i][1]-1][4]*angles
-        impedance = (-1)*A*(complex(np.cos(angle),-np.sin(angle)))
-        S_ij = inside*impedance*Sbase
-        #S_ij = (busdata[linedata[i][0]][4]**2-busdata[linedata[i][0]][4]*busdata[linedata[i][1]][4])#*(complex(np.cos(busdata[linedata[i][0]][5]-(-busdata[linedata[i][1]][5])),np.sin(busdata[linedata[i][0]][5]-(-busdata[linedata[i][1]][5])))))#*(-1)*A*(complex(np.cos(angle),(-1)*np.sin(angle)))
+        angles = complex(np.cos(busdata[linedata[i][0]-1][5]-(-busdata[linedata[i][1]-1][5])),np.sin(busdata[linedata[i][0]-1][5]-(-busdata[linedata[i][1]-1][5])))     #cos(d_i-d_j) + j*sin(d_i-d_j)
+        V = (busdata[linedata[i][0]-1][4]**2)-busdata[linedata[i][0]-1][4]*busdata[linedata[i][1]-1][4]*angles  #|V_i|**2-|V_i|*|V_j|*(cos(d_i-(-d_j)) + j*sin(d_i-(-d_j))
+        Y = (-1)*A*(complex(np.cos(angle),-np.sin(angle)))
+        S_ij = V*Y*Sbase
 
         # transmission losses
         numerator = np.abs(busdata[linedata[i][0]-1][4]*(complex(np.cos(busdata[linedata[i][0]-1][5]),np.sin(busdata[linedata[i][0]-1][5])))-busdata[linedata[i][1]-1][4]*(complex(np.cos(busdata[linedata[i][1]-1][5]),np.sin(busdata[linedata[i][1]-1][5]))))**2
-        denumerator = -1*YBus[linedata[i][0]-1][linedata[i][1]-1]
-        S_ij_loss = numerator*denumerator*Sbase
+        denominator = -1*YBus[linedata[i][0]-1][linedata[i][1]-1]
+        S_ij_loss = numerator*denominator*Sbase
 
         line = f"{linedata[i][0]}{' - '}{linedata[i][1]}{gap}{gap}{S_ij:15.3}{gap}{gap}{np.real(S_ij):10.5}{gap}{gap}{np.imag(S_ij):10.5}{gap}{np.real(S_ij_loss):10.5}{gap}{np.imag(S_ij_loss):10.5}"
         print(line)
-
-
-
-
 
 
 def printIteration(busdata,pMismatch,qMismatch,P,Q):
@@ -114,7 +105,6 @@ def printIteration(busdata,pMismatch,qMismatch,P,Q):
 
     iterP = 0
     iterQ = 0
-    lines = ""
     for i in range(0,len(busdata)):
 
         if(busdata[i][1]==2):
@@ -125,6 +115,7 @@ def printIteration(busdata,pMismatch,qMismatch,P,Q):
 
         elif(busdata[i][1]==1):
             lines = f"{(busdata[i][0] + 1):6d}{gap}{'Generator':9}{gap}{busdata[i][2]:5.2f}{gap}{busdata[i][6]:5.2f}{gap}{busdata[i][7]:5.2f}{gap}{busdata[i][3]:5.2f}{gap}{busdata[i][8]:5.2f}{gap}{busdata[i][9]:5.2f}{gap}{busdata[i][4]:8.5}{gap}{float(busdata[i][5]):10.3}{gap}{P[i]:8.2}{gap}{Q[i]:8.2}{gap}{np.abs(pMismatch[iterP]):8.2}{gap}{math.nan:6}"
+
             iterP += 1
 
         else:
@@ -132,7 +123,6 @@ def printIteration(busdata,pMismatch,qMismatch,P,Q):
 
         print(lines)
     print('\n')
-
 
 
 
@@ -158,29 +148,24 @@ def isConverged(myangles, myVs, YBus,busdata):
     pMismatch = []                      # active power mismatch vector
     qMismatch = []                      # reactive power mismatch vector
     for i in range(0, n):
-        #print(i+1,"bus i")
-        #print("\n")
         for j in range(0,n):
             [A,angle] = cmath.polar(YBus[i][j])
             if (A != 0):
                 P[i] = P[i] + V[i]*V[j]*A*np.cos(d[i] - d[j] - angle)
                 Q[i] = Q[i] + V[i]*V[j]*A*np.sin(d[i] - d[j] - angle)
-                #print(Q[i],"Q[i]")
         if (busdata[i][1]==1)or(busdata[i][1]==2):
             pMismatch.append(busdata[i][2] - P[i])
             if (busdata[i][1]==2):
                 qMismatch.append(busdata[i][3] - Q[i])
+
     b = True      #assume that the solution is converged
-    #print(Q,"Q")
-    epsilon = 0.1
+    tolerance = 0.1
     powersMismatch = np.vstack(np.hstack((pMismatch, qMismatch)))       #just stack all mismatches to run through all at once...
     for i in range(0,len(powersMismatch)):
-        if(np.absolute(powersMismatch[i])>epsilon):                     #check tolerance
+        if(np.absolute(powersMismatch[i])>tolerance):                   #check tolerance
             b = False
             break
     return pMismatch,qMismatch,nGen,nLoad,b,P,Q
-
-
 
 
 
@@ -212,7 +197,7 @@ def findYBus(linedata):
     for i in range(1, nbus + 1):
         for j in range(0, branches):
             if (linedata[j][0] == (i)) or (linedata[j][1] == i):
-                YBus[i - 1][i - 1] = YBus[i - 1][i - 1] + y[j] + linedata[j][4]/2       #adding half-admittance on line
+                YBus[i - 1][i - 1] = YBus[i - 1][i - 1] + y[j] + linedata[j][4]/2       #adding half-admittance on line on last term
 
     dim = len(YBus)
     gaplength = 5
@@ -228,9 +213,6 @@ def findYBus(linedata):
         print('')
     print('\n')
     return YBus
-
-
-
 
 
 
@@ -271,7 +253,6 @@ def findJacobian(YBus,busdata,nGen,nLoad):
                                 productP1 = productP1 + A*busdata[k][4]*np.sin(busdata[i][5]-busdata[k][5]-angle)
                         J1[j1count[0],j1count[1]] = -1*busdata[i][4]*productP1
                         j1count[1] += 1
-
             j1count[0] += 1
 
     # Calculates the (P-|V|) - sensitivities
@@ -361,7 +342,6 @@ def updateStateVariables(inverse,myangles,myVs,pMismatch,qMismatch,busdata,nGen,
             iter += 1
 
     for i in range(0,dim):
-        #print(iter)
         if(busdata[i][1]==2):
             for j in range(0,len(powersMismatch)):
                 myVs[i] = myVs[i] + inverse[iter][j]*powersMismatch[j]
