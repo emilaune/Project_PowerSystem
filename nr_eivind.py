@@ -168,12 +168,9 @@ def isConverged(myangles, myVs, YBus,busdata):
     return pMismatch,qMismatch,nGen,nLoad,b,P,Q
 
 
-
-
-
 # findYBus is a function that takes "linedata" as input and
 # returns the Admittance Bus Matrix of the system.
-def findYBus(linedata):
+def findYBus(linedata):  # bør legge inn hvilken form input skal være på
     nbus = max(linedata[0])             # no. of network nodes
     branches = len(linedata)            # no. of network branches
     for i in range(0, len(linedata)):
@@ -350,4 +347,4 @@ def updateStateVariables(inverse,myangles,myVs,pMismatch,qMismatch,busdata,nGen,
     return myangles, myVs,busdata
 
 
-partAquestion2()
+# partAquestion2()

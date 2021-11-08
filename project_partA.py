@@ -71,21 +71,5 @@ def getlines(filepath):
 
 
 if __name__ == '__main__':
-<<<<<<<
-<<<<<<< HEAD
-    busmatrix = getbusdata("C:/Users/jonas/Downloads/project_busdata1.xlsx")
-    linematrix = getlinedata("C:/Users/jonas/Downloads/project_busdata2.xlsx")
-    buses = getbuses("C:/Users/jonas/Downloads/project_busdata1.xlsx")
-    #print(busmatrix[0])
-    print(linematrix)
-   
-=======
-    busmatrix = getbusdata("/Users/emiljakobsen/Documents/NTNU 4.klasse/7. semester/Power System Analysis/Project/Project_PowerSystem/project_busdata.xlsx")
-=======
-    busmatrix = getbusdata(https://github.com/emilaune/Project_PowerSystem/blob/main/project_busdata.xlsx)
->>>>>>>
-    buses = getbuses("/Users/emiljakobsen/Documents/NTNU 4.klasse/7. semester/Power System Analysis/Project/project_busdata.xlsx")
-    print(busmatrix)
-    print("heipåeskil")
->>>>>>> readme-edits
-print("hei")
+    # linematrix = getlinedata("C:/Users/jonas/Downloads/project_busdata2.xlsx")
+    # print(linematrix)
