@@ -2,14 +2,16 @@
 # TET4115 Power System Analysis; semester: Fall 2021
 # Author: Eivind Falk
 
+
 import numpy as np      # np.sin, np.cos
 import cmath            # cmath.polar
 import math             # math.nan
+import time
 
 def partAquestion2():
 
     #           [i,     j,  r_ij,   x_ij,   y(OC)_ij]
-    linedata = [[1,     2,  0.05,   0.25,   0.5],
+    linedata = [[1,     2,  0.05,   0.25,   0.05],
                 [2,     3,  0.05,   0.25,   0.05],
                 [1,     4,  0.02,   0.2,    0.033],
                 [2,     4,  0.02,   0.2,    0.033],
@@ -24,14 +26,13 @@ def partAquestion2():
 
 
     YBus = findYBus(linedata)
-    myangles = [0, 0, 0, 0, 0]              # all unknown bus voltage phase angles are initially set to 0 rad
-    myVs = [1, 1, 1, 1, 1]                  # all unknown bus voltage magnitudes are initially set to 1.0 pu
 
     iteration = 0
     print("iteration:",iteration)
 
-    [pMismatch, qMismatch, nGen, nLoad, b,P,Q] = isConverged(myangles, myVs, YBus, busdata)
+    [pMismatch, qMismatch, nGen, nLoad, b,P,Q] = isConverged(YBus, busdata)
     printIteration(busdata, pMismatch, qMismatch, P, Q)
+    checkReactiveLimits(busdata,Q)
 
     while(b == False):                  # while not converged
         iteration += 1
@@ -43,14 +44,15 @@ def partAquestion2():
         inverse = np.linalg.inv(J)
 
         # Update the state variables
-        [myangles,myVs,busdata] = updateStateVariables(inverse,myangles,myVs,pMismatch,qMismatch,busdata,nGen,nLoad)
+        busdata = updateStateVariables(inverse,pMismatch,qMismatch,busdata)
 
         # Check convergence
-        [pMismatch, qMismatch, nGen, nLoad, b, P, Q] = isConverged(myangles, myVs, YBus, busdata)
+        [pMismatch, qMismatch, nGen, nLoad, b, P, Q] = isConverged(YBus, busdata)
 
         # display the iteration results
         printIteration(busdata, pMismatch, qMismatch,P,Q)
-        powerTransmissions(linedata,busdata,YBus)
+        checkReactiveLimits(busdata,Q)
+    powerTransmissions(linedata, busdata, YBus)
 
 
 def printJacobian(J):
@@ -66,7 +68,15 @@ def printJacobian(J):
             print(line,end = "")
         print(' ')
 
-
+def checkReactiveLimits(busdata,Q):
+    dim = len(busdata)
+    for i in range(0,dim):
+        if(busdata[i][1]==1):
+            violation = False
+            if(Q[i]>busdata[i][9]):
+                print("Upper Reactive Power Limit on bus:",busdata[i][0]+1," is violated!!!")
+            elif(Q[i]<busdata[i][8]):
+                print("Lower Reactive Power Limit on bus:",busdata[i][0]+1," is violated!!!")
 
 def powerTransmissions(linedata,busdata,YBus):
 
@@ -74,25 +84,34 @@ def powerTransmissions(linedata,busdata,YBus):
 
     # header
     gap = ' '*2
-    header = f"{'Line':15s}{gap}{'S_ij[MVA]':10s}{gap}{'P_ij[MW]':10s}{gap}{'Q_ij[MVAr]':10s}{gap}{'P_loss[MW]':10s}{gap}{'Q_loss[MVAr]'}"
+    header = f"{'Line':15s}{gap}{'S_ij[MVA]':10s}{gap}{'S_ij(OC)[MVA]':10s}{gap}{'P_ij[MW]':10s}{gap}{'P_ij(OC)[MW]':10s}{gap}{'Q_ij[MVAr]':10s}{gap}{'Q_ij(OC)[MVAr]':10s}{gap}{'P_loss[MW]':10s}{gap}{'Q_loss[MVAr]'}"
     print("-"*150)
     print(header)
     print("-"*150)
     for i in range(0,len(linedata)):
-        [A,angle] = cmath.polar(YBus[linedata[i][0]-1][linedata[i][1]-1])
+        [A,theta] = cmath.polar(YBus[linedata[i][0]-1][linedata[i][1]-1])
 
-        # transmitted power
-        angles = complex(np.cos(busdata[linedata[i][0]-1][5]-(-busdata[linedata[i][1]-1][5])),np.sin(busdata[linedata[i][0]-1][5]-(-busdata[linedata[i][1]-1][5])))     #cos(d_i-d_j) + j*sin(d_i-d_j)
-        V = (busdata[linedata[i][0]-1][4]**2)-busdata[linedata[i][0]-1][4]*busdata[linedata[i][1]-1][4]*angles  #|V_i|**2-|V_i|*|V_j|*(cos(d_i-(-d_j)) + j*sin(d_i-(-d_j))
-        Y = (-1)*A*(complex(np.cos(angle),-np.sin(angle)))
-        S_ij = V*Y*Sbase
+        # transmitted power neglecting operating capacitance
+        delta_i = busdata[linedata[i][0]-1][5]
+        delta_j = busdata[linedata[i][1]-1][5]
+        delta_ij = delta_i+(-delta_j)
+
+        vSending = busdata[linedata[i][0]-1][4]
+        vReceiving = busdata[linedata[i][1]-1][4]
+
+        Y_ij = A*(complex(np.cos(theta),(-1)*np.sin(theta)))
+        S_ij = (vSending**2-vSending*vReceiving*(complex(np.cos(delta_ij),np.sin(delta_ij))))*(-1)*Y_ij*Sbase
+
+        # transmitted power / operating capacitance
+        [yOCMagnitude,yOC_theta] = cmath.polar(complex(0,linedata[i][4]/2))
+        S_ijOC = ((busdata[linedata[i][0]-1][4])**2)*complex(yOCMagnitude*np.cos(yOC_theta),-yOCMagnitude*np.sin(yOC_theta))*Sbase
 
         # transmission losses
-        numerator = np.abs(busdata[linedata[i][0]-1][4]*(complex(np.cos(busdata[linedata[i][0]-1][5]),np.sin(busdata[linedata[i][0]-1][5])))-busdata[linedata[i][1]-1][4]*(complex(np.cos(busdata[linedata[i][1]-1][5]),np.sin(busdata[linedata[i][1]-1][5]))))**2
-        denominator = -1*YBus[linedata[i][0]-1][linedata[i][1]-1]
-        S_ij_loss = numerator*denominator*Sbase
+        vPhasorSending = busdata[linedata[i][0] - 1][4] * (complex(np.cos(busdata[linedata[i][0] - 1][5]), np.sin(busdata[linedata[i][0] - 1][5])))
+        vPhasorReceiving = busdata[linedata[i][1] - 1][4] * (complex(np.cos(busdata[linedata[i][1] - 1][5]), np.sin(busdata[linedata[i][1] - 1][5])))
+        S_ij_loss = (np.abs(vPhasorSending-vPhasorReceiving))**2*(-1)*A*(complex(np.cos(theta),np.sin(theta)))*Sbase
 
-        line = f"{linedata[i][0]}{' - '}{linedata[i][1]}{gap}{gap}{S_ij:15.3}{gap}{gap}{np.real(S_ij):10.5}{gap}{gap}{np.imag(S_ij):10.5}{gap}{np.real(S_ij_loss):10.5}{gap}{np.imag(S_ij_loss):10.5}"
+        line = f"{linedata[i][0]}{' - '}{linedata[i][1]}{gap}{gap}{S_ij:15.3}{gap}{S_ij + S_ijOC:15.3}{gap}{np.real(S_ij):10.5}{gap}{gap}{np.real(S_ij + S_ijOC):10.5}{gap}{np.imag(S_ij):10.5}{gap}{np.imag(S_ij + S_ijOC):10.5}{gap}{np.abs(np.real(S_ij_loss)):10.5}{gap}{np.abs(np.imag(S_ij_loss)):10.5}"
         print(line)
 
 
@@ -131,7 +150,7 @@ def printIteration(busdata,pMismatch,qMismatch,P,Q):
 # finds the mismatches vector and returns the mismatches of active- and reactive powers
 # of iteration "i" to be used in the iterations. Also, a boolean value is returned to indicate convergence
 # or not convergence (i.e. perform another iteration)
-def isConverged(myangles, myVs, YBus,busdata):
+def isConverged(YBus,busdata):
     nGen = 0                                # number of generator buses in system
     nLoad = 0                               # number of load buses in system
     n = len(busdata)
@@ -141,8 +160,6 @@ def isConverged(myangles, myVs, YBus,busdata):
         elif (busdata[i][1] == 2):
             nLoad += 1
 
-    V = myVs
-    d = myangles
     P = np.zeros([n])        # active power injections vector
     Q = np.zeros([n])        # reactive power injections vector
     pMismatch = []                      # active power mismatch vector
@@ -151,15 +168,15 @@ def isConverged(myangles, myVs, YBus,busdata):
         for j in range(0,n):
             [A,angle] = cmath.polar(YBus[i][j])
             if (A != 0):
-                P[i] = P[i] + V[i]*V[j]*A*np.cos(d[i] - d[j] - angle)
-                Q[i] = Q[i] + V[i]*V[j]*A*np.sin(d[i] - d[j] - angle)
+                P[i] = P[i] + busdata[i][4]*busdata[j][4]*A*np.cos(busdata[i][5] - busdata[j][5] - angle)
+                Q[i] = Q[i] + busdata[i][4]*busdata[j][4]*A*np.sin(busdata[i][5] - busdata[j][5] - angle)
         if (busdata[i][1]==1)or(busdata[i][1]==2):
             pMismatch.append(busdata[i][2] - P[i])
             if (busdata[i][1]==2):
                 qMismatch.append(busdata[i][3] - Q[i])
 
     b = True      #assume that the solution is converged
-    tolerance = 0.1
+    tolerance = 0.01
     powersMismatch = np.vstack(np.hstack((pMismatch, qMismatch)))       #just stack all mismatches to run through all at once...
     for i in range(0,len(powersMismatch)):
         if(np.absolute(powersMismatch[i])>tolerance):                   #check tolerance
@@ -168,9 +185,12 @@ def isConverged(myangles, myVs, YBus,busdata):
     return pMismatch,qMismatch,nGen,nLoad,b,P,Q
 
 
+
+
+
 # findYBus is a function that takes "linedata" as input and
 # returns the Admittance Bus Matrix of the system.
-def findYBus(linedata):  # bør legge inn hvilken form input skal være på
+def findYBus(linedata):
     nbus = max(linedata[0])             # no. of network nodes
     branches = len(linedata)            # no. of network branches
     for i in range(0, len(linedata)):
@@ -326,7 +346,7 @@ def findJacobian(YBus,busdata,nGen,nLoad):
 
 
 # updateStateVariables is a function that finds the updated values of the state variables defined.
-def updateStateVariables(inverse,myangles,myVs,pMismatch,qMismatch,busdata,nGen,nLoad):
+def updateStateVariables(inverse,pMismatch,qMismatch,busdata):
     powersMismatch = np.vstack(np.hstack((pMismatch, qMismatch)))
     dim = len(busdata)
     iter = 0
@@ -334,20 +354,18 @@ def updateStateVariables(inverse,myangles,myVs,pMismatch,qMismatch,busdata,nGen,
     for i in range(0,dim):
         if (busdata[i][1] == 1) or (busdata[i][1] == 2):
             for j in range(0,len(powersMismatch)):
-                myangles[i] = myangles[i] + inverse[iter][j]*powersMismatch[j]
-            busdata[i][5] = float(myangles[i])
+                busdata[i][5] = busdata[i][5] + inverse[iter][j]*powersMismatch[j]
+                busdata[i][5] = float(busdata[i][5])
             iter += 1
 
     for i in range(0,dim):
         if(busdata[i][1]==2):
             for j in range(0,len(powersMismatch)):
-                myVs[i] = myVs[i] + inverse[iter][j]*powersMismatch[j]
-            busdata[i][4] = float(myVs[i])
+                busdata[i][4] = busdata[i][4] + inverse[iter][j]*powersMismatch[j]
+                busdata[i][4] = float(busdata[i][4])
             iter += 1
-    return myangles, myVs,busdata
+    return busdata
 
-
-# partAquestion2()
 
 def decoupledJacobian(YBus,busdata,nGen,nLoad):
     dim = len(busdata)
@@ -362,6 +380,7 @@ def decoupledJacobian(YBus,busdata,nGen,nLoad):
     j4count = [0, 0]  # (#Q x #V)
 
     # Calculate the (P-delta) - sensitivities
+    # all elements in sin and cos except from 'angle' is set to zero.(in j1 and j4, j2 and j3 = 0)
     for i in range(0, dim):
         if (busdata[i][1] == 1) or (busdata[i][1] == 2):  # find possible generator and load buses
             j1count[1] = 0
@@ -483,28 +502,35 @@ def fastdecoupled():
     iteration = 0
     print("iteration:", iteration)
 
-    [pMismatch, qMismatch, nGen, nLoad, b, P, Q] = isConverged(myangles, myVs, YBus, busdata)
+    [pMismatch, qMismatch, nGen, nLoad, b, P, Q] = isConverged(YBus, busdata)
     printIteration(busdata, pMismatch, qMismatch, P, Q)
+    checkReactiveLimits(busdata, Q)  # in this case, this one only prints if reactive limits is violated
+
+    # Find Jacobian, can have it outside of while since FDLF
+    J = decoupledJacobian(YBus, busdata, nGen, nLoad)
+    printJacobian(J)
+    inverse = np.linalg.inv(J)
 
     while (b == False):  # while not converged
+        start = time.time()
+        print("hello")
+
         iteration += 1
         print("Iteration: ", iteration)
 
-        # Find new Jacobian
-        J = decoupledJacobian(YBus, busdata, nGen, nLoad)
-        printJacobian(J)
-        inverse = np.linalg.inv(J)
-
         # Update the state variables
-        [myangles, myVs, busdata] = updateStateVariables(inverse, myangles, myVs, pMismatch, qMismatch, busdata, nGen,
-                                                         nLoad)
+        busdata = updateStateVariables(inverse, pMismatch, qMismatch, busdata)
 
         # Check convergence
-        [pMismatch, qMismatch, nGen, nLoad, b, P, Q] = isConverged(myangles, myVs, YBus, busdata)
+        [pMismatch, qMismatch, nGen, nLoad, b, P, Q] = isConverged(YBus, busdata)
 
         # display the iteration results
         printIteration(busdata, pMismatch, qMismatch, P, Q)
-        powerTransmissions(linedata, busdata, YBus)
+        checkReactiveLimits(busdata, Q)
+
+        end = time.time()
+        print(end - start)
+    powerTransmissions(linedata, busdata, YBus)
 
     return None
 
