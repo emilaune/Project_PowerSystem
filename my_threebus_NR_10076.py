@@ -116,6 +116,7 @@ def my_threebus_NR_10076(r12, x12, r13, x13, p2, v2, p3, q3):
     deltaU = np.zeros(3)
 
     # iterating until error is small enough
+    iteration = 0
     e = 0.01
     while e >= 0.01:
         deltaU = vectorU - U_cal
@@ -123,7 +124,9 @@ def my_threebus_NR_10076(r12, x12, r13, x13, p2, v2, p3, q3):
         myangles[1] += deltaX[0]
         myangles[2] += deltaX[1]
         myVs[2] += deltaX[2]
-        print("deltaU:", deltaU, "deltaX:", deltaX)
+        iteration += 1
+
+        #print("Iteration ", iteration, ": deltaU:", deltaU, "deltaX:", deltaX)
         if abs(deltaU[0]) < e and abs(deltaU[1]) < e and abs(deltaU[2]) < e:
             break
         else:
